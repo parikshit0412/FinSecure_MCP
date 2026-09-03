@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgrespassword
       POSTGRES_DB: finsecure_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - finsecure_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     container_name: finsecure_app
     ports:
-      - "8000:10000"
+      - "8080:10000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/finsecure_db
       - USE_SQLITE=false
