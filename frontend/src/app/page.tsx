@@ -35,11 +35,26 @@ import {
 } from "lucide-react";
 import FlowVisualizer from "@/components/FlowVisualizer";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== "undefined" && window.location.port === "3000" ? "http://localhost:8000" : "");
+const getApiBase = (): string => {
+  if (typeof window !== "undefined") {
+    // If the browser is on port 8000 (unified Docker container), use relative API path
+    if (window.location.port === "8000") {
+      return "";
+    }
+    // If environment variable is explicitly provided, use it
+    if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.trim() !== "") {
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
+    // In local dev server (port 3000, 3001, etc.), route to FastAPI backend
+    return "http://localhost:8000";
+  }
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+};
 
 type ActiveTab = "graph" | "ledger" | "sars" | "simulator";
 
 export default function ComplianceDashboard() {
+  const API_BASE = getApiBase();
   const [activeTab, setActiveTab] = useState<ActiveTab>("graph");
   const [targetAccount, setTargetAccount] = useState("ACC-KYC-001");
   const [tokenInput, setTokenInput] = useState("");
@@ -83,43 +98,47 @@ export default function ComplianceDashboard() {
   const checkHealth = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/health`);
-      if (res.ok) {
+      const ct = res.headers.get("content-type");
+      if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
         setSystemHealth(data);
       }
     } catch {
       setSystemHealth(null);
     }
-  }, []);
+  }, [API_BASE]);
 
   const loadGraph = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/graph/${targetAccount}`);
-      if (res.ok) {
+      const ct = res.headers.get("content-type");
+      if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
         setGraphData(data);
       }
     } catch (e) {
       console.error("Failed to load graph ledger data", e);
     }
-  }, [targetAccount]);
+  }, [API_BASE, targetAccount]);
 
   const loadSarReports = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/sar-reports`);
-      if (res.ok) {
+      const ct = res.headers.get("content-type");
+      if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
         setSarReports(data.reports || []);
       }
     } catch (e) {
       console.error("Failed to load SAR reports", e);
     }
-  }, []);
+  }, [API_BASE]);
 
   const pollPendingToken = useCallback(async (accountId: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/pending-token/${accountId}`);
-      if (res.ok) {
+      const ct = res.headers.get("content-type");
+      if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
         if (data.challenge_token) {
           setDetectedToken(data.challenge_token);
@@ -128,7 +147,7 @@ export default function ComplianceDashboard() {
     } catch (e) {
       console.error("Failed to check pending token", e);
     }
-  }, []);
+  }, [API_BASE]);
 
   useEffect(() => {
     checkHealth();

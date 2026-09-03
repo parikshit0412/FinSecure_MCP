@@ -495,7 +495,7 @@ export default function FlowVisualizer({
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.18 }}
+        fitViewOptions={{ padding: 0.28 }}
         minZoom={0.2}
         maxZoom={1.6}
       >
