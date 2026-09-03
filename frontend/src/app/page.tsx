@@ -36,19 +36,23 @@ import {
 import FlowVisualizer from "@/components/FlowVisualizer";
 
 const getApiBase = (): string => {
-  if (typeof window !== "undefined") {
-    // If the browser is on port 8000 (unified Docker container), use relative API path
-    if (window.location.port === "8000") {
-      return "";
-    }
-    // If environment variable is explicitly provided, use it
-    if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.trim() !== "") {
-      return process.env.NEXT_PUBLIC_API_URL;
-    }
-    // In local dev server (port 3000, 3001, etc.), route to FastAPI backend
-    return "http://localhost:8000";
+  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.trim() !== "") {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  if (typeof window !== "undefined") {
+    const isLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    // ONLY in local development when UI is on separate dev server (e.g. port 3000), route to backend 8000
+    if (isLocal && window.location.port === "3000") {
+      return "http://localhost:8000";
+    }
+
+    // In all production deployments (Render, Docker, Cloud), use same-origin relative path
+    return "";
+  }
+  return "";
 };
 
 type ActiveTab = "graph" | "ledger" | "sars" | "simulator";

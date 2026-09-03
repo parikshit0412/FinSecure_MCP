@@ -108,6 +108,34 @@ def create_transaction(tx: TransactionCreate):
         "amount": tx.amount
     }
 
+@app.get("/api/transactions")
+def list_transactions():
+    """Returns all transactions from the ledger database."""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, source_account, destination_account, amount, currency, timestamp FROM transactions ORDER BY id ASC;")
+            return {"transactions": cur.fetchall() or []}
+
+@app.get("/api/accounts")
+def list_accounts():
+    """Returns all accounts from the ledger database."""
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, holder_name, risk_score, status, is_pep FROM accounts ORDER BY id ASC;")
+            return {"accounts": cur.fetchall() or []}
+
+@app.get("/api/accounts/{account_id}")
+def get_account_detail(account_id: str):
+    """Returns profile and KYC status for a specific account."""
+    target = account_id.strip().upper()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, holder_name, risk_score, status, is_pep FROM accounts WHERE id = %s;", (target,))
+            acc = cur.fetchone()
+            if not acc:
+                raise HTTPException(status_code=404, detail=f"Account {target} not found.")
+            return {"account": acc}
+
 @app.post("/api/accounts")
 def create_account(acc: AccountCreate):
     """Creates a new KYC account in the database."""
