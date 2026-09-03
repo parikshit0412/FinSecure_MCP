@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: finsecure-aml-platform
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: USE_SQLITE
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
