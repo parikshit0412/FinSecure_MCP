@@ -251,18 +251,19 @@ def reset_database():
     init_and_seed_db()
     return {"status": "RESET_COMPLETED"}
 
+@app.get("/api/graph")
 @app.get("/api/graph/{account_id}")
-def get_graph_data(account_id: str):
+def get_graph_data(account_id: str = "ACC-KYC-001"):
     """Provides structured nodes and edges for React Flow visualization."""
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id, source_account, destination_account, amount, currency, timestamp FROM transactions;")
-            txs = cur.fetchall()
+            txs = cur.fetchall() or []
             cur.execute("SELECT id, holder_name, risk_score, status, is_pep FROM accounts;")
-            accs = cur.fetchall()
+            accs = cur.fetchall() or []
 
     return {
-        "target_account": account_id.upper(),
+        "target_account": account_id.upper() if account_id else "ACC-KYC-001",
         "accounts": [dict(a) for a in accs],
         "transactions": [dict(t) for t in txs]
     }

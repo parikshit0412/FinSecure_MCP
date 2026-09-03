@@ -73,6 +73,33 @@ class SQLiteConnectionWrapper:
             self._conn.commit()
         self._conn.close()
 
+class PostgresConnectionWrapper:
+    """Context manager for PostgreSQL connection guaranteeing close and commit."""
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self._conn.rollback()
+        else:
+            self._conn.commit()
+        self._conn.close()
+
 def get_db_engine() -> str:
     global _DB_ENGINE
     if _DB_ENGINE is not None:
@@ -99,7 +126,13 @@ def get_db():
     if engine == "postgres":
         import psycopg2
         from psycopg2.extras import RealDictCursor
-        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        try:
+            conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+            return PostgresConnectionWrapper(conn)
+        except Exception as e:
+            # Automatic fallback to SQLite if PostgreSQL connection fails
+            conn = sqlite3.connect(SQLITE_DB_PATH)
+            return SQLiteConnectionWrapper(conn)
     else:
         conn = sqlite3.connect(SQLITE_DB_PATH)
         return SQLiteConnectionWrapper(conn)
@@ -173,14 +206,18 @@ def init_and_seed_db():
                     );
                 """)
 
-            # Check existing accounts count
+            # Check existing accounts and transactions count
             cur.execute("SELECT COUNT(*) as count FROM accounts;")
-            res = cur.fetchone()
-            count = res["count"] if res else 0
+            acc_res = cur.fetchone()
+            acc_count = acc_res["count"] if acc_res else 0
 
-            # Re-seed if empty or upgrade if older seed (less than 10 accounts)
-            if count < 11:
-                print(f"[*] Seeding expanded enterprise dataset with mixed Clean and Fraud accounts...")
+            cur.execute("SELECT COUNT(*) as count FROM transactions;")
+            tx_res = cur.fetchone()
+            tx_count = tx_res["count"] if tx_res else 0
+
+            # Re-seed if empty, incomplete, or missing transactions
+            if acc_count < 12 or tx_count < 14:
+                print(f"[*] Seeding expanded enterprise dataset with mixed Clean and Fraud accounts [{engine.upper()}]...")
                 # Clear previous seed for clean idempotent upgrade
                 cur.execute("DELETE FROM sar_reports;")
                 cur.execute("DELETE FROM transactions;")
