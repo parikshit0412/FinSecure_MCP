@@ -35,30 +35,21 @@ import {
 } from "lucide-react";
 import FlowVisualizer from "@/components/FlowVisualizer";
 
-const getApiBase = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.trim() !== "") {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
+function getEndpoint(path: string): string {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
   if (typeof window !== "undefined") {
-    const isLocal =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
-
-    // ONLY in local development when UI is on separate dev server (e.g. port 3000), route to backend 8000
-    if (isLocal && window.location.port === "3000") {
-      return "http://localhost:8000";
+    // Only in local development when UI is on separate dev server (e.g. port 3000), route to backend 8000
+    if ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && window.location.port === "3000") {
+      return `http://localhost:8000${cleanPath}`;
     }
-
-    // In all production deployments (Render, Docker, Cloud), use same-origin relative path
-    return "";
   }
-  return "";
-};
+  // In all production cloud deployments (e.g. Render), return clean relative path
+  return cleanPath;
+}
 
 type ActiveTab = "graph" | "ledger" | "sars" | "simulator";
 
 export default function ComplianceDashboard() {
-  const API_BASE = getApiBase();
   const [activeTab, setActiveTab] = useState<ActiveTab>("graph");
   const [targetAccount, setTargetAccount] = useState("ACC-KYC-001");
   const [tokenInput, setTokenInput] = useState("");
@@ -101,7 +92,7 @@ export default function ComplianceDashboard() {
 
   const checkHealth = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/health`);
+      const res = await fetch(getEndpoint("/api/health"));
       const ct = res.headers.get("content-type");
       if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
@@ -110,11 +101,11 @@ export default function ComplianceDashboard() {
     } catch {
       setSystemHealth(null);
     }
-  }, [API_BASE]);
+  }, []);
 
   const loadGraph = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/graph/${targetAccount}`);
+      const res = await fetch(getEndpoint(`/api/graph/${targetAccount}`));
       const ct = res.headers.get("content-type");
       if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
@@ -123,11 +114,11 @@ export default function ComplianceDashboard() {
     } catch (e) {
       console.error("Failed to load graph ledger data", e);
     }
-  }, [API_BASE, targetAccount]);
+  }, [targetAccount]);
 
   const loadSarReports = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/sar-reports`);
+      const res = await fetch(getEndpoint("/api/sar-reports"));
       const ct = res.headers.get("content-type");
       if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
@@ -136,11 +127,11 @@ export default function ComplianceDashboard() {
     } catch (e) {
       console.error("Failed to load SAR reports", e);
     }
-  }, [API_BASE]);
+  }, []);
 
   const pollPendingToken = useCallback(async (accountId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/pending-token/${accountId}`);
+      const res = await fetch(getEndpoint(`/api/pending-token/${accountId}`));
       const ct = res.headers.get("content-type");
       if (res.ok && ct && ct.includes("application/json")) {
         const data = await res.json();
@@ -151,7 +142,7 @@ export default function ComplianceDashboard() {
     } catch (e) {
       console.error("Failed to check pending token", e);
     }
-  }, [API_BASE]);
+  }, []);
 
   useEffect(() => {
     checkHealth();
@@ -187,7 +178,7 @@ export default function ComplianceDashboard() {
     setLoading(true);
     setVerdict("");
     try {
-      const res = await fetch(`${API_BASE}/api/investigate`, {
+      const res = await fetch(getEndpoint("/api/investigate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ account_id: targetAccount, action_token: withToken }),
@@ -206,8 +197,8 @@ export default function ComplianceDashboard() {
       await loadSarReports();
     } catch {
       setVerdict(
-        "❌ Connection Error: Unable to connect to FinSecure AI Gateway at http://localhost:8000.\n" +
-        "Ensure the FastAPI server is running with:\n  uvicorn backend.api:app --reload --port 8000"
+        "❌ Connection Error: Unable to connect to FinSecure AI Gateway.\n" +
+        "Ensure the server is running."
       );
     } finally {
       setLoading(false);
@@ -216,7 +207,7 @@ export default function ComplianceDashboard() {
 
   const handleOfficerFreeze = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/officer/action`, {
+      const res = await fetch(getEndpoint("/api/officer/action"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -243,7 +234,7 @@ export default function ComplianceDashboard() {
 
   const handleOfficerCascadeFreeze = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/officer/action`, {
+      const res = await fetch(getEndpoint("/api/officer/action"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -270,7 +261,7 @@ export default function ComplianceDashboard() {
 
   const handleOfficerUnfreeze = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/officer/action`, {
+      const res = await fetch(getEndpoint("/api/officer/action"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -295,7 +286,7 @@ export default function ComplianceDashboard() {
 
   const handleOfficerFileSar = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/officer/action`, {
+      const res = await fetch(getEndpoint("/api/officer/action"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -322,7 +313,7 @@ export default function ComplianceDashboard() {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE}/api/transactions`, {
+      const res = await fetch(getEndpoint("/api/transactions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -352,7 +343,7 @@ export default function ComplianceDashboard() {
     }
     const cleanId = newAccId.trim().toUpperCase();
     try {
-      const res = await fetch(`${API_BASE}/api/accounts`, {
+      const res = await fetch(getEndpoint("/api/accounts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -379,7 +370,7 @@ export default function ComplianceDashboard() {
 
   const handleResetDatabase = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/reset-db`, { method: "POST" });
+      const res = await fetch(getEndpoint("/api/reset-db"), { method: "POST" });
       if (res.ok) {
         notify("🔄 Ledger reset to clean baseline successfully.");
         setVerdict("");
@@ -396,12 +387,12 @@ export default function ComplianceDashboard() {
 
   const handleQuickAttackSophia = async () => {
     try {
-      await fetch(`${API_BASE}/api/transactions`, {
+      await fetch(getEndpoint("/api/transactions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source_account: "ACC-CLEAN-006", destination_account: "ACC-SHELL-002", amount: 9800 }),
       });
-      await fetch(`${API_BASE}/api/transactions`, {
+      await fetch(getEndpoint("/api/transactions"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source_account: "ACC-CLEAN-006", destination_account: "ACC-SHELL-003", amount: 9750 }),
