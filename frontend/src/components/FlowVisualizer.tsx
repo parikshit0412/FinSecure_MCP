@@ -231,7 +231,7 @@ export default function FlowVisualizer({
   transactions,
   highlightAccount = "ACC-KYC-001",
 }: FlowVisualizerProps) {
-  const [filterMode, setFilterMode] = useState<GraphFilter>("focus");
+  const [filterMode, setFilterMode] = useState<GraphFilter>("all");
   const [singleAccountFilter, setSingleAccountFilter] = useState<string>("ALL");
 
   const accountVolumes = useMemo(() => {
